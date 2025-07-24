@@ -93,12 +93,18 @@
     </tbody>
   </table>
 
-  <script>
-    // Show "New Person" input if "__new__" is selected
-    document.getElementById('person-dropdown').addEventListener('change', function () {
-      const isNew = this.value === '__new__';
-      document.getElementById('new-person').style.display = isNew ? 'block' : 'none';
-    });
-  </script>
+<script>
+  // Show/hide "New Person" input
+  document.getElementById('person-dropdown').addEventListener('change', function () {
+    document.getElementById('new-person').style.display = this.value === '__new__' ? 'block' : 'none';
+  });
+
+  // ✅ Set today's date as default
+  window.addEventListener('DOMContentLoaded', () => {
+    const dateInput = document.querySelector('input[name="date"]');
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+  });
+</script>
 </body>
 </html>
