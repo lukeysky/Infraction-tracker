@@ -1,6 +1,9 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
+import openpyxl
 import json
 import os
+from io import BytesIO
+
 
 app = Flask(__name__)
 
@@ -38,19 +41,53 @@ def add_infraction():
 
     severity = int(request.form['severity'])
     date = request.form['date']
+    notes = request.form.get('notes', '').strip()  # ✅ Get notes
 
     if person not in records:
         records[person] = []
 
     records[person].append({
         'severity': severity,
-        'date': date
+        'date': date,
+        'notes': notes  # ✅ Save notes
     })
 
     save_data(records)
-
-    # ✅ Redirect back to homepage
     return redirect(url_for('index'))
 
+@app.route('/export')
+def export_excel():
+    records = load_data()
+
+    # Create a workbook and sheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Infractions'
+
+    # Header row
+    ws.append(['Person', 'Date', 'Severity', 'Notes'])
+
+    # Fill data
+    for person, infractions in records.items():
+        for entry in infractions:
+            ws.append([
+                person,
+                entry.get('date', ''),
+                entry.get('severity', ''),
+                entry.get('notes', '')
+            ])
+
+    # Save to memory buffer
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        download_name='infractions.xlsx',
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    
 if __name__ == '__main__':
     app.run(debug=True)
