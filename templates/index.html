@@ -1,56 +1,63 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Infraction Tracker</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    #toast.show {
-      display: block;
-      animation: fadeOut 2s ease-in-out forwards;
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: auto;
+      padding: 1em;
     }
 
-    @keyframes fadeOut {
-      0% { opacity: 1; }
-      80% { opacity: 1; }
-      100% { opacity: 0; transform: translateY(-20px); }
+    h1 {
+      text-align: center;
+    }
+
+    form {
+      background: #f9f9f9;
+      padding: 1em;
+      margin-bottom: 2em;
+      border-radius: 8px;
+    }
+
+    label {
+      display: block;
+      margin-top: 1em;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 0.5em;
+      margin-top: 0.3em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 0.5em;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f0f0f0;
     }
   </style>
 </head>
-<body class="p-4">
-  <div class="container">
-    <h1 class="mb-4">Infraction Tracker</h1>
+<body>
+  <h1>Infraction Tracker</h1>
 
-    <form id="infractionForm" method="POST" action="/add" class="mb-4">
-      <div class="mb-3">
-        <label for="person">Person:</label>
-        <select name="person" id="person" class="form-select" required onchange="toggleNewPersonField()">
-          <option value="" disabled selected>Select a person</option>
-          {% for name in people %}
-            <option value="{{ name }}">{{ name }}</option>
-          {% endfor %}
-          <option value="__new__">➕ Add new person</option>
-        </select>
-      </div>
-
-      <div id="newPersonField" style="display: none;">
-        <input type="text" name="new_person" id="new_person" class="form-control" placeholder="Enter new person name">
-      </div>
-
-      <div class="mb-3">
-        <label for="severity">Severity (1-10):</label>
-        <input type="number" name="severity" id="severity" class="form-control" min="1" max="10" required>
-      </div>
-
-      <div class="mb-3">
-        <label for="date">Date:</label>
-        <input type="date" name="date" id="date" class="form-control" required>
-      </div>
-  <!-- ✅ BEGIN: Infraction Form -->
+  <!-- ✅ Infraction Submission Form -->
   <form id="infraction-form" method="POST" action="/add">
     <label for="person">Person:</label>
-    <select name="person" id="person-dropdown">
-      <option value="__new__">Add New Person</option>
+    <select name="person" id="person-dropdown" required>
+      <option value="">-- Select Person --</option>
+      <option value="__new__">➕ Add New Person</option>
       {% for person in people %}
         <option value="{{ person }}">{{ person }}</option>
       {% endfor %}
@@ -64,124 +71,33 @@
     <label for="date">Date:</label>
     <input type="date" name="date" required>
 
-    <!-- ✅ SUBMIT BUTTON -->
     <button type="submit">Submit Infraction</button>
   </form>
-  <!-- ✅ END: Infraction Form -->
 
-  <script>
-    // Show/hide "new person" field based on dropdown
-    document.getElementById('person-dropdown').addEventListener('change', function () {
-      document.getElementById('new-person').style.display = this.value === '__new__' ? 'inline' : 'none';
-      <div id="savingSpinner" style="display:none;">
-        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
-        Saving...
-      </div>
-    </form>
-
-    <h3>Totals:</h3>
-    <table class="table table-bordered">
-      <thead>
+  <!-- ✅ Totals Table -->
+  <h2>Total Severity by Person</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Person</th>
+        <th>Total Severity</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for person, total in totals.items() %}
         <tr>
-          <th>Person</th>
-          <th>Total Severity</th>
+          <td>{{ person }}</td>
+          <td>{{ total }}</td>
         </tr>
-      </thead>
-      <tbody>
-        {% for person, infractions in records.items() %}
-          <tr>
-            <td>{{ person }}</td>
-            <td id="total-{{ person }}">{{ totals[person] }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div id="toast" style="
-    display: none;
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background-color: #28a745;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    font-weight: bold;
-    z-index: 1000;
-  ">Saved ✅</div>
+      {% endfor %}
+    </tbody>
+  </table>
 
   <script>
-    function toggleNewPersonField() {
-      const dropdown = document.getElementById('person');
-      const newField = document.getElementById('newPersonField');
-
-      if (dropdown.value === '__new__') {
-        newField.style.display = 'block';
-        document.getElementById('new_person').required = true;
-      } else {
-        newField.style.display = 'none';
-        document.getElementById('new_person').required = false;
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      const form = document.getElementById('infractionForm');
-      const toast = document.getElementById('toast');
-
-      form.addEventListener('change', async () => {
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-
-        if (!data.severity || !data.date || (data.person === "__new__" && !data.new_person)) {
-          return;
-        }
-
-        try {
-          showSpinner(true);
-
-          const response = await fetch('/add', {
-            method: 'POST',
-            body: formData
-          });
-
-          const result = await response.json();
-          showSpinner(false);
-
-          if (result.error) {
-            console.error(result.error);
-            return;
-          }
-
-          showToast("Saved ✅");
-
-          const person = result.person;
-          const newTotal = result.new_total;
-          const totalElement = document.getElementById(`total-${person}`);
-          if (totalElement) {
-            totalElement.textContent = newTotal;
-          }
-
-        } catch (err) {
-          console.error("Auto-save failed:", err);
-          showSpinner(false);
-        }
-      });
-
-      function showToast(message) {
-        toast.textContent = message;
-        toast.classList.add('show');
-
-        setTimeout(() => {
-          toast.classList.remove('show');
-        }, 2000);
-      }
-
-      function showSpinner(visible) {
-        const spinner = document.getElementById('savingSpinner');
-        spinner.style.display = visible ? 'inline-block' : 'none';
-      }
+    // Show "New Person" input if "__new__" is selected
+    document.getElementById('person-dropdown').addEventListener('change', function () {
+      const isNew = this.value === '__new__';
+      document.getElementById('new-person').style.display = isNew ? 'block' : 'none';
     });
   </script>
 </body>
